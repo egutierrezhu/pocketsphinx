@@ -33,12 +33,15 @@ class voice_cmd_vel:
         self.min_angular_speed = rospy.get_param("~min_angular_speed", 0.2)
         self.angular_increment = rospy.get_param("~angular_increment", 0.1)
 
-        self.speed = rospy.get_param("~start_speed", 0.2)
-        self.angular_speed = rospy.get_param("~start_angular_speed", 0.2)
+        self.speed = rospy.get_param("~start_speed", 0.3)
+        self.angular_speed = rospy.get_param("~start_angular_speed", 0.4)
         
         # We don't have to run the script very fast
         self.rate = rospy.get_param("~rate", 5)
         r = rospy.Rate(self.rate)
+
+        # Time, in seconds, for waiting correct command 
+        self.time_wait = 8
 
         # A flag to determine whether or not TIAGo voice control
         self.TIAGo = False
@@ -79,7 +82,9 @@ class voice_cmd_vel:
         for (command, keywords) in self.keywords_to_command.iteritems():
             for word in keywords:
                 if data.find(word) > -1:
-                    self.TIAGo = False
+                    # Wait time_wait seconds for other command
+                    self.time1 = rospy.get_rostime()
+                    self.time_wait = 15
                     return command
         
     def speech_callback(self, msg):
@@ -89,13 +94,31 @@ class voice_cmd_vel:
         if msg.data == 'tiago':
             rospy.loginfo("TIAGo waiting command")
             self.TIAGo = True
+            self.time1 = rospy.get_rostime()
+            #rospy.loginfo("Current time1 %i", self.time1.secs)
+            return
+        elif self.get_command(msg.data) == 'stop':
+            rospy.loginfo("Command: " + self.get_command(msg.data))
+            # Stop the robot!  Publish a Twist message consisting of all zeros. 
+            self.cmd_vel = Twist()
+            # Wait time_wait seconds before to rest 
+            self.time1 = rospy.get_rostime()
+            self.time_wait = 8
             return
 
-        # If TIAGo voice control is true Get the motion command
-        # from the recognized phrase
+        # If TIAGo voice control is true and not out of time
+        # Get the motion command from the recognized phrase
         # If false, simply return without performing any action
         if self.TIAGo:
-            command = self.get_command(msg.data) 
+            self.time2 = rospy.get_rostime()
+            #rospy.loginfo("Current time2 %i", self.time2.secs)
+            if self.time2.secs < self.time1.secs+self.time_wait:
+                command = self.get_command(msg.data)
+            else:
+                self.TIAGo = False
+                # Return to initial value
+                self.time_wait = 8
+                return
         else:
             return
         
@@ -127,10 +150,6 @@ class voice_cmd_vel:
             else:        
                 self.cmd_vel.angular.z = -self.angular_speed
    
-            
-        elif command == 'stop': 
-            # Stop the robot!  Publish a Twist message consisting of all zeros.         
-            self.cmd_vel = Twist()
         
         elif command == 'faster':
             if self.cmd_vel.linear.x != 0:
@@ -188,4 +207,3 @@ if __name__=="__main__":
         rospy.spin()
     except rospy.ROSInterruptException:
         rospy.loginfo("Moving the base through velocity commands terminated.")
-
