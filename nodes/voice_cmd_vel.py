@@ -27,14 +27,14 @@ class voice_cmd_vel:
         # Set a number of parameters affecting the robot's speed
         self.max_speed = rospy.get_param("~max_speed", 0.4)
         self.min_speed = rospy.get_param("~min_speed", 0.1)
-        self.linear_increment = rospy.get_param("~linear_increment", 0.05)
+        self.linear_increment = rospy.get_param("~linear_increment", 0.1)
 
         self.max_angular_speed = rospy.get_param("~max_angular_speed", 0.8)
-        self.min_angular_speed = rospy.get_param("~min_angular_speed", 0.2)
+        self.min_angular_speed = rospy.get_param("~min_angular_speed", 0.1)
         self.angular_increment = rospy.get_param("~angular_increment", 0.1)
 
-        self.speed = rospy.get_param("~start_speed", 0.3)
-        self.angular_speed = rospy.get_param("~start_angular_speed", 0.4)
+        self.speed = rospy.get_param("~start_speed", 0.1)
+        self.angular_speed = rospy.get_param("~start_angular_speed", 0.2)
         
         # We don't have to run the script very fast
         self.rate = rospy.get_param("~rate", 5)
