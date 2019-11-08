@@ -33,6 +33,7 @@ class voice_cmd_vel:
         self.min_angular_speed = rospy.get_param("~min_angular_speed", 0.1)
         self.angular_increment = rospy.get_param("~angular_increment", 0.1)
 
+        # Initial parameters
         self.speed = rospy.get_param("~start_speed", 0.1)
         self.angular_speed = rospy.get_param("~start_angular_speed", 0.2)
         
@@ -40,8 +41,9 @@ class voice_cmd_vel:
         self.rate = rospy.get_param("~rate", 5)
         r = rospy.Rate(self.rate)
 
-        # Time, in seconds, for waiting correct command 
-        self.time_wait = 8
+        # Time, in seconds, for waiting correct command
+        self.initial_wait_time = 5
+        self.wait_time = self.initial_wait_time
 
         # A flag to determine whether or not TIAGo voice control
         self.TIAGo = False
@@ -82,9 +84,9 @@ class voice_cmd_vel:
         for (command, keywords) in self.keywords_to_command.iteritems():
             for word in keywords:
                 if data.find(word) > -1:
-                    # Wait time_wait seconds for other command
+                    # Wait time for other command, in seconds
                     self.time1 = rospy.get_rostime()
-                    self.time_wait = 15
+                    self.wait_time = 10
                     return command
         
     def speech_callback(self, msg):
@@ -97,13 +99,13 @@ class voice_cmd_vel:
             self.time1 = rospy.get_rostime()
             #rospy.loginfo("Current time1 %i", self.time1.secs)
             return
+
         elif self.get_command(msg.data) == 'stop':
-            rospy.loginfo("Command: " + self.get_command(msg.data))
-            # Stop the robot!  Publish a Twist message consisting of all zeros. 
+            # Stop the robot!  Publish a Twist message consisting of all zeros.
+            rospy.loginfo("Command: " + self.get_command(msg.data)) 
             self.cmd_vel = Twist()
-            # Wait time_wait seconds before to rest 
-            self.time1 = rospy.get_rostime()
-            self.time_wait = 8
+            self.TIAGo = False
+            self.wait_time = self.initial_wait_time
             return
 
         # If TIAGo voice control is true and not out of time
@@ -112,12 +114,11 @@ class voice_cmd_vel:
         if self.TIAGo:
             self.time2 = rospy.get_rostime()
             #rospy.loginfo("Current time2 %i", self.time2.secs)
-            if self.time2.secs < self.time1.secs+self.time_wait:
+            if self.time2.secs < self.time1.secs+self.wait_time:
                 command = self.get_command(msg.data)
             else:
                 self.TIAGo = False
-                # Return to initial value
-                self.time_wait = 8
+                self.wait_time = self.initial_wait_time
                 return
         else:
             return
